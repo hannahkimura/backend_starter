@@ -2,10 +2,11 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Friend, Post, User, WebSession } from "./app";
+import { Connect, Friend, Post, User, Visibility, WebSession } from "./app";
 import { PostDoc, PostOptions } from "./concepts/post";
 import { UserDoc } from "./concepts/user";
 import { WebSessionDoc } from "./concepts/websession";
+
 import Responses from "./responses";
 
 class Routes {
@@ -96,24 +97,24 @@ class Routes {
     return await User.idsToUsernames(await Friend.getFriends(user));
   }
 
-  @Router.delete("/friends/:friend")
-  async removeFriend(session: WebSessionDoc, friend: string) {
-    const user = WebSession.getUser(session);
-    const friendId = (await User.getUserByUsername(friend))._id;
-    return await Friend.removeFriend(user, friendId);
-  }
+  // @Router.delete("/friends/:friend")
+  // async removeFriend(session: WebSessionDoc, friend: string) {
+  //   const user = WebSession.getUser(session);
+  //   const friendId = (await User.getUserByUsername(friend))._id;
+  //   return await Friend.removeFriend(user, friendId);
+  // }
 
-  @Router.get("/friend/requests")
+  @Router.get("/connect/requests")
   async getRequests(session: WebSessionDoc) {
     const user = WebSession.getUser(session);
-    return await Responses.friendRequests(await Friend.getRequests(user));
+    return await Responses.friendRequests(await Connect.getRequests(user));
   }
 
-  @Router.post("/friend/requests/:to")
+  @Router.post("/connect/requests/:to")
   async sendFriendRequest(session: WebSessionDoc, to: string) {
     const user = WebSession.getUser(session);
     const toId = (await User.getUserByUsername(to))._id;
-    return await Friend.sendRequest(user, toId);
+    return await Connect.sendRequest(user, toId);
   }
 
   @Router.delete("/friend/requests/:to")
@@ -123,19 +124,72 @@ class Routes {
     return await Friend.removeRequest(user, toId);
   }
 
-  @Router.put("/friend/accept/:from")
+  @Router.put("/connect/accept/:from")
   async acceptFriendRequest(session: WebSessionDoc, from: string) {
     const user = WebSession.getUser(session);
     const fromId = (await User.getUserByUsername(from))._id;
-    return await Friend.acceptRequest(fromId, user);
+    return await Connect.acceptRequest(fromId, user);
   }
 
-  @Router.put("/friend/reject/:from")
+  @Router.put("/connect/reject/:from")
   async rejectFriendRequest(session: WebSessionDoc, from: string) {
     const user = WebSession.getUser(session);
     const fromId = (await User.getUserByUsername(from))._id;
-    return await Friend.rejectRequest(fromId, user);
+    return await Connect.rejectRequest(fromId, user);
   }
+
+  @Router.delete("/visibility/remove/:user")
+  async removeFriend(session: WebSessionDoc, toRemove: string) {
+    const user = WebSession.getUser(session);
+    const fromId = (await User.getUserByUsername(toRemove))._id;
+    return await Visibility.removeFriend(user, fromId);
+  }
+
+  @Router.post("/visibility/access/:postId")
+  async setAccess(session: WebSessionDoc, status: String) {
+    const user = WebSession.getUser(session);
+    return await Visibility.setAccess(user, status);
+  }
+  //Outlines:
+
+  // @Router.put("/profile/update")
+  // async updateInfo(profile_info: Map<String,Number|String>,current_posts:Array<PostDoc>) {
+
+  // }
+
+  // @Router.put("/profile/delete")
+  // async deleteProfile(current_posts:Array<PostDoc>) {
+
+  // }
+
+  // @Router.post("profile/reveal")
+  // async revealProfile(current_posts:Array<PostDoc>) {
+
+  // }
+
+  // @Router.post("alike/preferences")
+  // async updatePref(preferences: Array<Map<String,String| SkillScore>>) {
+
+  // }
+
+  // @Router.post("alike/filter")
+  // async filter(preferences:Array<Map<String,String| SkillScore>>,recommended_users: Array<ObjectId>) {
+
+  // }
+
+  // @Router.post("skillscore/score")
+  // async addScore(current: Number, opponent: Number, score: Array<Number, Number>, valid_scores: Array<Number>) {}
+
+  // @Router.delete("skillscore/score/delete")
+  // async removeScore(current:Number,scores: Array<Number,Number>,valid_scores: Array<Number>) {
+
+  // }
+
+  // @Router.post("expiringresource/addedScore")
+  // async allocate(r:ObjectId,t:Number) {}
+
+  // @Router.delete("expiringresource/expiredScore")
+  // async expire(r:ObjectId) {}
 }
 
 export default getExpressRouter(new Routes());
