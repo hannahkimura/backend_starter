@@ -1,11 +1,19 @@
 import { ObjectId } from "mongodb";
 
+<<<<<<< HEAD
+=======
+import { Router, getExpressRouter } from "./framework/router";
+
+>>>>>>> template/main
 import { Friend, Post, User, WebSession } from "./app";
 import { PostDoc, PostOptions } from "./concepts/post";
 import { UserDoc } from "./concepts/user";
 import { WebSessionDoc } from "./concepts/websession";
+<<<<<<< HEAD
 import { Router, getExpressRouter } from "./framework/router";
 
+=======
+>>>>>>> template/main
 import Responses from "./responses";
 
 class Routes {
@@ -58,6 +66,7 @@ class Routes {
   }
 
   @Router.get("/posts")
+<<<<<<< HEAD
   async getPosts(session: WebSessionDoc, author?: string) {
     let posts;
     const postsToReturn: Array<PostDoc> = [];
@@ -97,12 +106,26 @@ class Routes {
     }
 
     return Responses.posts(postsToReturn);
+=======
+  async getPosts(author?: string) {
+    let posts;
+    if (author) {
+      const id = (await User.getUserByUsername(author))._id;
+      posts = await Post.getByAuthor(id);
+    } else {
+      posts = await Post.getPosts({});
+    }
+    return Responses.posts(posts);
+>>>>>>> template/main
   }
 
   @Router.post("/posts")
   async createPost(session: WebSessionDoc, content: string, options?: PostOptions) {
+<<<<<<< HEAD
     //How do i add pics to this?
     //need to post this to feed and to profile (how do I do this)
+=======
+>>>>>>> template/main
     const user = WebSession.getUser(session);
     const created = await Post.create(user, content, options);
     return { msg: created.msg, post: await Responses.post(created.post) };
@@ -135,6 +158,7 @@ class Routes {
     return await Friend.removeFriend(user, friendId);
   }
 
+<<<<<<< HEAD
   @Router.get("/connect/requests")
   async getRequests(session: WebSessionDoc) {
     const user = WebSession.getUser(session);
@@ -146,6 +170,19 @@ class Routes {
     const user = WebSession.getUser(session);
     const toId = (await User.getUserByUsername(to))._id;
     return await Connect.sendRequest(user, toId);
+=======
+  @Router.get("/friend/requests")
+  async getRequests(session: WebSessionDoc) {
+    const user = WebSession.getUser(session);
+    return await Responses.friendRequests(await Friend.getRequests(user));
+  }
+
+  @Router.post("/friend/requests/:to")
+  async sendFriendRequest(session: WebSessionDoc, to: string) {
+    const user = WebSession.getUser(session);
+    const toId = (await User.getUserByUsername(to))._id;
+    return await Friend.sendRequest(user, toId);
+>>>>>>> template/main
   }
 
   @Router.delete("/friend/requests/:to")
@@ -155,6 +192,7 @@ class Routes {
     return await Friend.removeRequest(user, toId);
   }
 
+<<<<<<< HEAD
   @Router.put("/connect/accept/:from")
   async acceptFriendRequest(session: WebSessionDoc, from: string) {
     const user = WebSession.getUser(session);
@@ -209,6 +247,21 @@ class Routes {
 
   // @Router.delete("expiringresource/expiredScore")
   // async expire(r:ObjectId) {}
+=======
+  @Router.put("/friend/accept/:from")
+  async acceptFriendRequest(session: WebSessionDoc, from: string) {
+    const user = WebSession.getUser(session);
+    const fromId = (await User.getUserByUsername(from))._id;
+    return await Friend.acceptRequest(fromId, user);
+  }
+
+  @Router.put("/friend/reject/:from")
+  async rejectFriendRequest(session: WebSessionDoc, from: string) {
+    const user = WebSession.getUser(session);
+    const fromId = (await User.getUserByUsername(from))._id;
+    return await Friend.rejectRequest(fromId, user);
+  }
+>>>>>>> template/main
 }
 
 export default getExpressRouter(new Routes());
