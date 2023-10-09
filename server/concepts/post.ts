@@ -11,8 +11,9 @@ export interface PostDoc extends BaseDoc {
   author: ObjectId;
   content: string;
   options?: PostOptions;
+  visibility: "public" | "friends" | "private";
 }
-
+//maybe have three different posts
 export default class PostConcept {
   public readonly posts = new DocCollection<PostDoc>("posts");
 

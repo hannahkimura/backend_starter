@@ -1,11 +1,10 @@
 import { ObjectId } from "mongodb";
 
-import { Router, getExpressRouter } from "./framework/router";
-
-import { Connect, Friend, Post, User, Visibility, WebSession } from "./app";
+import { Friend, Post, User, WebSession } from "./app";
 import { PostDoc, PostOptions } from "./concepts/post";
 import { UserDoc } from "./concepts/user";
 import { WebSessionDoc } from "./concepts/websession";
+import { Router, getExpressRouter } from "./framework/router";
 
 import Responses from "./responses";
 
@@ -59,19 +58,51 @@ class Routes {
   }
 
   @Router.get("/posts")
-  async getPosts(author?: string) {
+  async getPosts(session: WebSessionDoc, author?: string) {
     let posts;
+    const postsToReturn: Array<PostDoc> = [];
     if (author) {
       const id = (await User.getUserByUsername(author))._id;
       posts = await Post.getByAuthor(id);
+      const otherUser = session.user;
+      if (!otherUser) {
+        throw new Error("can't find other user");
+      }
+      const otherId = (await User.getUserByUsername(otherUser))._id;
+      const areNotFriends = Friend.isNotFriends(id, otherId);
+
+      if (id.toString() === otherId.toString()) {
+        //author is the same as user
+        return Responses.posts(posts);
+      } else if (!areNotFriends) {
+        //this is the case where they are friends
+        //show all posts with state of friends
+        for (const post of posts) {
+          if (post.visibility == "friends" || post.visibility == "public") {
+            postsToReturn.push(post);
+          }
+        }
+      } else {
+        //users are not friends
+        for (const post of posts) {
+          if (post.visibility == "public") {
+            postsToReturn.push(post);
+          }
+        }
+        //show all posts with state of public
+      }
     } else {
+      //author doesn't exist
       posts = await Post.getPosts({});
     }
-    return Responses.posts(posts);
+
+    return Responses.posts(postsToReturn);
   }
 
   @Router.post("/posts")
   async createPost(session: WebSessionDoc, content: string, options?: PostOptions) {
+    //How do i add pics to this?
+    //need to post this to feed and to profile (how do I do this)
     const user = WebSession.getUser(session);
     const created = await Post.create(user, content, options);
     return { msg: created.msg, post: await Responses.post(created.post) };
@@ -97,12 +128,12 @@ class Routes {
     return await User.idsToUsernames(await Friend.getFriends(user));
   }
 
-  // @Router.delete("/friends/:friend")
-  // async removeFriend(session: WebSessionDoc, friend: string) {
-  //   const user = WebSession.getUser(session);
-  //   const friendId = (await User.getUserByUsername(friend))._id;
-  //   return await Friend.removeFriend(user, friendId);
-  // }
+  @Router.delete("/friends/:friend")
+  async removeFriend(session: WebSessionDoc, friend: string) {
+    const user = WebSession.getUser(session);
+    const friendId = (await User.getUserByUsername(friend))._id;
+    return await Friend.removeFriend(user, friendId);
+  }
 
   @Router.get("/connect/requests")
   async getRequests(session: WebSessionDoc) {
@@ -138,18 +169,6 @@ class Routes {
     return await Connect.rejectRequest(fromId, user);
   }
 
-  @Router.delete("/visibility/remove/:user")
-  async removeFriend(session: WebSessionDoc, toRemove: string) {
-    const user = WebSession.getUser(session);
-    const fromId = (await User.getUserByUsername(toRemove))._id;
-    return await Visibility.removeFriend(user, fromId);
-  }
-
-  @Router.post("/visibility/access/:postId")
-  async setAccess(session: WebSessionDoc, status: String) {
-    const user = WebSession.getUser(session);
-    return await Visibility.setAccess(user, status);
-  }
   //Outlines:
 
   // @Router.put("/profile/update")
