@@ -125,7 +125,7 @@ class Routes {
   }
 
   @Router.post("/posts")
-  async createPost(session: WebSessionDoc, content: string, image?: string, options?: PostOptions, collaborator?: ObjectId) {
+  async createPost(session: WebSessionDoc, content: string, image?: string, options?: PostOptions, collaborator?: string) {
     const user = WebSession.getUser(session);
     const created = await Post.create(user, content, image, options, collaborator);
     if (!created.post) {
@@ -137,10 +137,13 @@ class Routes {
     if (content === "win") {
       won = true;
     }
-    const _stat = await SkillScore.createStat(user, content, collaborator); //set expiration for stat
-    const new_score = await SkillScore.updateScore(user, won, collaborator);
+    if (collaborator) {
+      const updatedCollaborator = await User.getUserByUsername(collaborator);
+      const _stat = await SkillScore.createStat(user, content, updatedCollaborator._id); //set expiration for stat
+      const new_score = await SkillScore.updateScore(user, won, updatedCollaborator._id);
 
-    return { msg: created.msg, post: await Responses.post(created.post), stat: _stat, UserScore: new_score };
+      return { msg: created.msg, post: await Responses.post(created.post), stat: _stat, UserScore: new_score };
+    }
   }
 
   @Router.patch("/posts/:_id")
@@ -161,7 +164,10 @@ class Routes {
         won = false;
       }
       //update users skill score
-      await SkillScore.updateScore(user, won, opponent);
+      if (opponent) {
+        const opponentId = (await User.getUserByUsername(opponent))._id;
+        await SkillScore.updateScore(user, won, opponentId);
+      }
     }
 
     return await Post.update(_id, update);

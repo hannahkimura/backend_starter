@@ -13,14 +13,14 @@ export interface PostDoc extends BaseDoc {
   image?: string;
   options?: PostOptions;
   visibility: "public" | "friends" | "private";
-  collaborator?: ObjectId; //if you want to collaborate with another user
+  collaborator?: string; //if you want to collaborate with another user
 }
 //maybe have three different posts
 
 export default class PostConcept {
   public readonly posts = new DocCollection<PostDoc>("posts");
 
-  async create(author: ObjectId, content: string, image?: string, options?: PostOptions, collaborator?: ObjectId) {
+  async create(author: ObjectId, content: string, image?: string, options?: PostOptions, collaborator?: string) {
     const _id = await this.posts.createOne({ author, content, image, options, collaborator });
     return { msg: "Post successfully created!", post: await this.posts.readOne({ _id }) };
   }
