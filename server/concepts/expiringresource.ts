@@ -3,7 +3,7 @@ import DocCollection, { BaseDoc } from "../framework/doc";
 import { NotFoundError } from "./errors";
 export interface ExpiringDoc<T> extends BaseDoc {
   expDate: Date;
-  expiring: T; //made it generic, but in my case this would be the user
+  expiring: T; //made it generic, but in my case this would be the stat
 }
 
 export default class ExpiringConcept<T> {

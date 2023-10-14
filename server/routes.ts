@@ -40,7 +40,9 @@ class Routes {
     locationRange: number,
   ) {
     WebSession.isLoggedOut(session);
-    return await User.create(username, password, gender, sports, skill, location, genderPref, sportsPref, skillPref, locationRange);
+    const finished = await User.create(username, password, gender, sports, skill, location, genderPref, sportsPref, skillPref, locationRange);
+
+    return { user: { username, password }, profile: Responses.profile(finished.profile), preferences: Responses.preferences(finished.preference) };
   }
 
   @Router.patch("/users/:_id")
