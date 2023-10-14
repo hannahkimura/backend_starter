@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { Friend, Post, SkillScore, User, WebSession } from "./app";
 import { PostDoc, PostOptions } from "./concepts/post";
-import { UserDoc } from "./concepts/user";
+import { UserDoc, UserPrefDoc } from "./concepts/user";
 import { WebSessionDoc } from "./concepts/websession";
 import { Router, getExpressRouter } from "./framework/router";
 
@@ -41,6 +41,12 @@ class Routes {
   ) {
     WebSession.isLoggedOut(session);
     return await User.create(username, password, gender, sports, skill, location, genderPref, sportsPref, skillPref, locationRange);
+  }
+
+  @Router.patch("/users/:_id")
+  async updatePreferences(session: WebSessionDoc, update: Partial<UserPrefDoc>) {
+    const user = WebSession.getUser(session);
+    return await User.updatePreferences(user, update);
   }
 
   @Router.patch("/users")
