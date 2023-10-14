@@ -77,6 +77,13 @@ const operations: operation[] = [
     method: "DELETE",
     fields: { id: "input" },
   },
+
+  {
+    name: "Filter Users",
+    endpoint: "/api/users/:id",
+    method: "POST",
+    fields: { id: "input" },
+  },
 ];
 
 // Do not edit below here.

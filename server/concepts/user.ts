@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { Filter, ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
 import { BadValuesError, NotAllowedError, NotFoundError } from "./errors";
 
@@ -52,8 +52,8 @@ export default class UserConcept {
     };
   }
 
-  async getUserPreferencesByUsername(username: string) {
-    const preferences = await this.userPreferences.readOne({ username });
+  async getUserPreferencesByUsername(user: ObjectId) {
+    const preferences = await this.userPreferences.readOne({ user });
     if (preferences === null) {
       throw new NotFoundError(`User preferences not found!`);
     }
@@ -67,8 +67,8 @@ export default class UserConcept {
     await this.userPreferences.updateOne({ _id }, update);
   }
 
-  async getUserProfileByUsername(username: string) {
-    const profile = await this.userProfiles.readOne({ username });
+  async getUserProfileByUsername(user: ObjectId) {
+    const profile = await this.userProfiles.readOne({ user });
     if (profile === null) {
       throw new NotFoundError(`User profile not found!`);
     }
@@ -117,6 +117,13 @@ export default class UserConcept {
     const filter = username ? { username } : {};
     const users = (await this.users.readMany(filter)).map(this.sanitizeUser);
     return users;
+  }
+
+  async filterUsers(query: Filter<UserProfileDoc>) {
+    const usersFiltered = this.userProfiles.readMany(query, {
+      sort: { dateUpdated: -1 },
+    });
+    return usersFiltered;
   }
 
   async authenticate(username: string, password: string) {

@@ -56,6 +56,19 @@ class Routes {
     return await User.delete(user);
   }
 
+  @Router.post("/users/:_id")
+  async getUsersThatMatchPref(session: WebSessionDoc) {
+    const user = WebSession.getUser(session);
+    const userPref = User.getUserPreferencesByUsername(user);
+
+    const genderPref = (await userPref).genderPref;
+    const skillPref = (await userPref).skillPref;
+    //const locationRange = (await userPref).locationRange;
+    const sportPref = (await userPref).sportsPref;
+
+    return { msg: "Filtered Users!", users: await User.filterUsers({ genderPref, skillPref, sportPref }) };
+  }
+
   @Router.post("/login")
   async logIn(session: WebSessionDoc, username: string, password: string) {
     const u = await User.authenticate(username, password);
@@ -124,7 +137,7 @@ class Routes {
     if (content === "win") {
       won = true;
     }
-    const _stat = await SkillScore.createStat(user, content, collaborator);
+    const _stat = await SkillScore.createStat(user, content, collaborator); //set expiration for stat
     const new_score = await SkillScore.updateScore(user, won, collaborator);
 
     return { msg: created.msg, post: await Responses.post(created.post), stat: _stat, UserScore: new_score };
