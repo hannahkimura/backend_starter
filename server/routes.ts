@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 
-import { Friend, Post, User, WebSession } from "./app";
+import { Friend, Post, SkillScore, User, WebSession } from "./app";
 import { PostDoc, PostOptions } from "./concepts/post";
 import { UserDoc } from "./concepts/user";
 import { WebSessionDoc } from "./concepts/websession";
@@ -26,9 +26,21 @@ class Routes {
   }
 
   @Router.post("/users")
-  async createUser(session: WebSessionDoc, username: string, password: string) {
+  async createUser(
+    session: WebSessionDoc,
+    username: string,
+    password: string,
+    gender: string,
+    sports: Map<string, boolean>,
+    skill: number,
+    location: string,
+    genderPref: string,
+    sportsPref: Map<string, boolean>,
+    skillPref: Array<number>,
+    locationRange: number,
+  ) {
     WebSession.isLoggedOut(session);
-    return await User.create(username, password);
+    return await User.create(username, password, gender, sports, skill, location, genderPref, sportsPref, skillPref, locationRange);
   }
 
   @Router.patch("/users")
@@ -100,18 +112,45 @@ class Routes {
   }
 
   @Router.post("/posts")
-  async createPost(session: WebSessionDoc, content: string, options?: PostOptions) {
-    //How do i add pics to this?
-    //need to post this to feed and to profile (how do I do this)
+  async createPost(session: WebSessionDoc, content: string, image?: string, options?: PostOptions, collaborator?: ObjectId) {
     const user = WebSession.getUser(session);
-    const created = await Post.create(user, content, options);
-    return { msg: created.msg, post: await Responses.post(created.post) };
+    const created = await Post.create(user, content, image, options, collaborator);
+    if (!created.post) {
+      throw new Error("post wasn't created");
+    }
+
+    //NOTE: when stat is added, expiration is set for that stat
+    let won = false;
+    if (content === "win") {
+      won = true;
+    }
+    const _stat = await SkillScore.createStat(user, content, collaborator);
+    const new_score = await SkillScore.updateScore(user, won, collaborator);
+
+    return { msg: created.msg, post: await Responses.post(created.post), stat: _stat, UserScore: new_score };
   }
 
   @Router.patch("/posts/:_id")
   async updatePost(session: WebSessionDoc, _id: ObjectId, update: Partial<PostDoc>) {
     const user = WebSession.getUser(session);
     await Post.isAuthor(user, _id);
+    //note: in my app, content is stats
+    const originalPost = await Post.getPostById(_id);
+    await Post.update(_id, update);
+    const updatedPost = await Post.getPostById(_id);
+
+    if (originalPost?.content !== updatedPost?.content) {
+      const opponent = updatedPost?.collaborator;
+      let won;
+      if (updatedPost?.content === "win") {
+        won = true;
+      } else {
+        won = false;
+      }
+      //update users skill score
+      await SkillScore.updateScore(user, won, opponent);
+    }
+
     return await Post.update(_id, update);
   }
 
@@ -120,6 +159,32 @@ class Routes {
     const user = WebSession.getUser(session);
     await Post.isAuthor(user, _id);
     return Post.delete(_id);
+  }
+  //INSTEAD OF CALLING EXPIRINGRESOURCE, I AM USING MONGODB (datecreated)
+  //this is because each stat expires after a constant year
+  //I will argue that expiring resource is still a valid concept,however, because it generalizes the idea of
+  //expiring a resource after an inputted amount of time
+  // using expiring resource would allow me to update the expiring amount so it isn't fixed; this is ideal,
+  //but due to time constraints and the way my app will be used, I only included it as a prototype, and am implemting the concept
+  //differently in routes
+  @Router.delete("/skillScores/:_id")
+  async expireScore(session: WebSessionDoc, _id: ObjectId) {
+    const user = WebSession.getUser(session);
+    const expiredScore = await SkillScore.getStats(_id);
+    const content = expiredScore?.stat;
+    const expiredUser = expiredScore?.user1;
+    if (expiredUser) {
+      await SkillScore.isUser(user, expiredUser);
+    }
+
+    let won = false;
+    if (content === "win") {
+      won = true;
+    }
+    const otherUser = expiredScore?.user2;
+    if (expiredUser) {
+      return SkillScore.deleteOldScore(expiredUser, won, otherUser);
+    }
   }
 
   @Router.get("/friends")
@@ -168,47 +233,6 @@ class Routes {
     const fromId = (await User.getUserByUsername(from))._id;
     return await Friend.rejectRequest(fromId, user);
   }
-
-  //Outlines:
-
-  // @Router.put("/profile/update")
-  // async updateInfo(profile_info: Map<String,Number|String>,current_posts:Array<PostDoc>) {
-
-  // }
-
-  // @Router.put("/profile/delete")
-  // async deleteProfile(current_posts:Array<PostDoc>) {
-
-  // }
-
-  // @Router.post("profile/reveal")
-  // async revealProfile(current_posts:Array<PostDoc>) {
-
-  // }
-
-  // @Router.post("alike/preferences")
-  // async updatePref(preferences: Array<Map<String,String| SkillScore>>) {
-
-  // }
-
-  // @Router.post("alike/filter")
-  // async filter(preferences:Array<Map<String,String| SkillScore>>,recommended_users: Array<ObjectId>) {
-
-  // }
-
-  // @Router.post("skillscore/score")
-  // async addScore(current: Number, opponent: Number, score: Array<Number, Number>, valid_scores: Array<Number>) {}
-
-  // @Router.delete("skillscore/score/delete")
-  // async removeScore(current:Number,scores: Array<Number,Number>,valid_scores: Array<Number>) {
-
-  // }
-
-  // @Router.post("expiringresource/addedScore")
-  // async allocate(r:ObjectId,t:Number) {}
-
-  // @Router.delete("expiringresource/expiredScore")
-  // async expire(r:ObjectId) {}
 }
 
 export default getExpressRouter(new Routes());
